@@ -134,7 +134,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
     }
 
     @objc private func shutterButtonTapped() {
-        guard capturedPhotos.count < maxPhotos else {
+        guard originalPhotos.count < maxPhotos else {
             print("Roll complete")
             shutterButton.isEnabled = false
             return
