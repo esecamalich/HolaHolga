@@ -22,9 +22,11 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
     private var previewLayer: AVCaptureVideoPreviewLayer!
     private var photoOutput: AVCapturePhotoOutput!
     private var shutterButton: UIButton!
-    private var capturedPhotos: [UIImage] = []
+    private var originalPhotos: [UIImage] = []
     private let maxPhotos = 12
     private let photoProcessor = PhotoProcessor()
+    private var isRollReady = false
+    private var processedPhotos: [UIImage] = []
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -144,22 +146,47 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
 
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
         guard let imageData = photo.fileDataRepresentation(),
-              let image = UIImage(data: imageData),
-              let processedImage = photoProcessor.processImage(image) else {
+              let image = UIImage(data: imageData) else {
             print("Error capturing photo: \(error?.localizedDescription ?? "Unknown error")")
             return
         }
 
-        capturedPhotos.append(processedImage)
-        
-        // Save the processed image to photo library
-        UIImageWriteToSavedPhotosAlbum(processedImage, self, #selector(image(_:didFinishSavingWithError:contextInfo:)), nil)
-        
-        print("Photo captured: \(capturedPhotos.count)/\(maxPhotos)")
+        originalPhotos.append(image)
+        print("Photo captured: \(originalPhotos.count)/\(maxPhotos)")
 
-        if capturedPhotos.count >= maxPhotos {
+        if originalPhotos.count >= maxPhotos {
             print("Roll complete")
             shutterButton.isEnabled = false
+            developRoll()
         }
+    }
+
+    private func developRoll() {
+        processedPhotos = originalPhotos.compactMap { photo in
+            photoProcessor.processImage(photo)
+        }
+        
+        if processedPhotos.count == maxPhotos {
+            isRollReady = true
+            showProcessedPhotos()
+        }
+    }
+
+    private func showProcessedPhotos() {
+        let alert = UIAlertController(
+            title: "Roll Developed!",
+            message: "Your photos are ready to view.",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "View Photos", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            let galleryVC = PhotoGalleryViewController(photos: self.processedPhotos)
+            let navController = UINavigationController(rootViewController: galleryVC)
+            navController.modalPresentationStyle = .fullScreen
+            self.present(navController, animated: true)
+        })
+        
+        present(alert, animated: true)
     }
 }
